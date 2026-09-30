@@ -1,0 +1,56 @@
+schema: spec-driven
+
+context: |
+  Language: es
+  All artifacts must be written in es.
+  Keep OpenSpec structural headings and SHALL/MUST keywords in English.
+
+  Proyecto: Money Flow — app de finanzas personales (greenfield, aún sin código; fase de diseño).
+  Contexto completo y decisiones abiertas: docs/CONTEXTO.md (leerlo antes de explorar o proponer).
+
+  Producto:
+  - Fuente off-line: estados de cuenta PDF -> extractor/parser/formatter (incl. MSI) -> persistencia;
+    múltiples estados de cuenta y detección de periodos duplicados.
+  - Fuente on-line: bot de Telegram que registra gastos en el "ciclo" en 3 pasos
+    (monto+descripción clasificado con OpenAI, fecha, confirmación).
+  - Web app: Login, Set up (entidades y apartados), Liquidez, Resumen, Behavior, Tracker,
+    Movimientos (cuadre tracker vs estado de cuenta), Recurrentes y MSI.
+  - Idea central: cuadre automático entre lo registrado en el tracker y el estado de cuenta.
+
+  Roles de las fuentes:
+  - openspec/specs: qué hace el sistema (requisitos + escenarios). Fuente de verdad funcional.
+  - design.md de cada change: decisiones técnicas duras.
+  - Figma (archivo "Money_flow_x"; link privado, pedir al equipo): cómo se ve e
+    interactúa; referenciar frames por node ID.
+  - Google Doc de propuesta: referencia histórica; la arquitectura allí descrita NO está decidida.
+  - Trello (Money Flow Backlog): desactualizado; solo para ejecución cuando haya código.
+
+  Propuesta técnica aún no decidida (tratar como hipótesis): Supabase Auth para identidad,
+  autorización de negocio en BD propia (roles owner/admin/member/viewer), servicios en Railway,
+  backend hexagonal (ports/adapters). Conflicto abierto: Supabase/Postgres vs MySQL+Redis.
+  Montos siempre DECIMAL, nunca float. Moneda por defecto MXN.
+
+  Orden de trabajo: explore de producto -> wireframes en Figma -> propose por capacidad ->
+  decisiones técnicas (change platform-architecture).
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing
