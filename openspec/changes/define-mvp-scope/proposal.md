@@ -41,6 +41,33 @@ Decisiones confirmadas en la sesión de exploración del Set up (2026-10-01). De
   - Si se pagan fuera de tarjeta, sí se restan.
 - **"Efectivo" se crea automáticamente.** Los medios con historial se archivan, no se borran.
 
+Decisiones confirmadas en la sesión de exploración de categorización (2026-10-23). Detalle en `specs/transaction-categorization/spec.md`:
+
+- **Categoría y apartado son conceptos separados y ligados:**
+  - La categoría describe en qué se gastó y existe desde la fase Histórico.
+  - El apartado (fase Captura) es un presupuesto que agrupa una o varias categorías con un monto.
+- **Catálogo base editable, de un solo nivel:**
+  - Se siembra al crear el espacio y el usuario puede renombrar, agregar, archivar y fusionar.
+  - "Otros" es la categoría de respaldo y no se puede archivar ni borrar.
+- **El tipo de movimiento es distinto de la categoría:**
+  - Tipos fijos: compra, mensualidad MSI, devolución, pago a la tarjeta, intereses, comisión y disposición de efectivo.
+  - Solo compra, mensualidad MSI y devolución llevan categoría. Los demás la llevan vacía, no una categoría "NA".
+  - Intereses y comisiones se reportan como costo financiero.
+- **Los MSI se categorizan una vez por plan** y las mensualidades heredan la categoría. Las devoluciones heredan la de su compra cuando se pueden ligar.
+- **Clasificación híbrida:**
+  - Primero la memoria del espacio, después el LLM y al final la revisión del usuario.
+  - La memoria siempre gana.
+- **La memoria se indexa por comercio normalizado y es por espacio.**
+  - Al corregir, "recordar para este comercio" viene marcado por defecto, con la opción "solo este movimiento".
+  - El pasado solo cambia si el usuario lo pide.
+- **La confianza se mide en tres niveles por señales observables, no con un puntaje del LLM:**
+  - Alta: por regla o por el usuario.
+  - Media: LLM con un comercio claro.
+  - Baja: caso ambiguo, comercio multigiro, descripción genérica o "Otros".
+- **Bandeja "por revisar" no bloqueante:**
+  - Lo de confianza baja se guarda con la mejor propuesta y entra a la bandeja, con la segunda opción del LLM como sugerencia.
+  - Es independiente de la revisión de extracción, que sí bloquea cuando los totales no cuadran.
+
 Propuestas aceptadas en principio, que se confirman en design.md de su change:
 
 - **Extracción híbrida:**
@@ -49,6 +76,10 @@ Propuestas aceptadas en principio, que se confirman en design.md de su change:
   - Si cuadra, se guarda; si no, pasa a una pantalla de revisión manual.
 - **Antes de enviar texto al LLM se eliminan datos personales** (nombre, dirección, RFC, número completo de tarjeta), y se usa un proveedor o plan sin retención de datos.
 - **Detección de duplicados** por emisor + últimos 4 dígitos + fecha de corte, y/o por huella del archivo. Nunca por contenido almacenado.
+- **La categorización va en la misma llamada al LLM que la extracción:**
+  - El LLM devuelve por cada movimiento el tipo, el comercio normalizado, la categoría, si es ambiguo y una segunda opción.
+  - Los movimientos con regla en la memoria no necesitan categoría del LLM.
+- **El umbral de confianza se calibra con PDFs etiquetados a mano:** si el nivel media se equivoca más de ~1 de cada 10 veces, también entra a la bandeja. La lista de comercios multigiro y el umbral final se fijan en design.md.
 
 Fuera del alcance del MVP (fase 1):
 
@@ -65,7 +96,7 @@ Los specs se escriben en changes posteriores, una vez cerrados el Set up y la in
 - `workspaces`: espacio personal creado automáticamente; todos los datos quedan aislados por espacio.
 - `financial-setup`: medios de pago personalizables (TDC creadas desde el estado de cuenta o a mano; débito, vales y efectivo con saldo opcional y ajustable), ingresos recurrentes y pagos recurrentes. **Spec escrito.**
 - `statement-ingestion`: subir un PDF de crédito, extraer, validar, revisar, guardar, detectar duplicados y descartar el PDF.
-- `transaction-categorization`: asignar una categoría a cada movimiento extraído.
+- `transaction-categorization`: catálogo de categorías base editable por espacio, tipo de movimiento separado de la categoría, clasificación híbrida (memoria por comercio + LLM), niveles de confianza y bandeja de movimientos por revisar. **Spec escrito.**
 - `historical-insights`: dashboards de la fase Histórico (Resumen, Behavior, MSI y recurrentes, Liquidez estimada).
 
 ### Modified Capabilities
@@ -92,7 +123,7 @@ Ninguna: no existen specs previos.
 Pendientes, en el orden sugerido para retomar:
 
 1. ~~**Instrumentos vs ingresos**~~: **resuelto** el 2026-10-01 (ver `specs/financial-setup/spec.md`).
-2. **Categorización:** ¿con reglas, con LLM o híbrida? ¿Catálogo fijo o editable? ¿Se relaciona con los "apartados"?
+2. ~~**Categorización**~~: **resuelto** el 2026-10-23 (ver `specs/transaction-categorization/spec.md`).
 3. **Qué dashboards y métricas entran exactamente en la fase Histórico.**
 4. **Postura de privacidad para family & friends:** ¿los administradores pueden ver datos de otros usuarios? Hay que decidirlo antes de invitarlos.
 5. **Datos de prueba:** conseguir 6 a 12 meses de estados de cuenta por emisor (hoy solo hay 1 por emisor) y confirmar si alguno está protegido con contraseña o escaneado.
@@ -102,12 +133,14 @@ Pendientes, en el orden sugerido para retomar:
    - ¿Se restan los cargos de la TDC en su fecha, o el pago del estado de cuenta en su fecha límite?
    - Hay que avisar en pantalla que no incluye gastos con débito o efectivo no declarados.
 9. **Medio de pago en el bot** (fase Captura): ¿cómo se pide sin romper el flujo de 3 pasos? Opciones: que el LLM lo deduzca de la descripción, botones en el paso 2 o recordar el último medio usado.
-10. **Onboarding:** cómo guiar el alta de medios, ingresos y pagos recurrentes sin abrumar al usuario.
+10. **Onboarding:** cómo guiar el alta de medios, ingresos y pagos recurrentes sin abrumar al usuario. Incluye invitar, sin obligar, a revisar todas las categorías del primer estado de cuenta, cuando la memoria está vacía.
+11. **Calibración de la confianza** (depende de la Open Question 5): etiquetar a mano las categorías de los PDFs de prueba, medir el error del nivel media y fijar la lista de comercios multigiro.
+12. **Ligar devoluciones con su compra original:** ¿con qué datos se liga (comercio, monto, fechas)? Se resuelve en `statement-ingestion`.
+13. **Nombres finales del catálogo base:** el spec usa un borrador de 16 categorías que se puede ajustar antes de los wireframes.
 
 ## Next Session
 
-- Retomar con `/opsx:explore Categorización de movimientos: reglas, LLM o híbrida; catálogo fijo o editable` (Open Question 2).
-- Después: dashboards y métricas de la fase Histórico (Open Questions 3 y 8).
-- En paralelo, fuera de sesión: reunir los PDFs de prueba (Open Question 5).
-- Cuando se cierren las Open Questions 2 y 3: escribir los specs restantes (`statement-ingestion`, `transaction-categorization`, `historical-insights`, `user-access`, `workspaces`) y pasar a los wireframes de Figma de la fase Histórico.
+- Retomar con `/opsx:explore Dashboards y métricas de la fase Histórico` (Open Questions 3 y 8). La categorización ya está definida, así que Behavior puede contar con gasto por categoría y costo financiero.
+- En paralelo, fuera de sesión: reunir los PDFs de prueba (Open Question 5) y etiquetar sus categorías (Open Question 11).
+- Cuando se cierre la Open Question 3: escribir los specs restantes (`statement-ingestion`, `historical-insights`, `user-access`, `workspaces`) y pasar a los wireframes de Figma de la fase Histórico.
 - Contexto de fuentes y hallazgos previos: `docs/CONTEXTO.md`.
